@@ -28,7 +28,7 @@ bl_info = {
 	"tracker_url": "",
 	"category": "Object"}
 
-import bpy
+import bpy, mathutils
 from bpy.app.handlers import persistent
 
 # ########################################################
@@ -38,8 +38,10 @@ from bpy.app.handlers import persistent
 
 
 # DRIVER TO UPDATE THE CALIPERS
-def CaliperUpdate(a):
-	return a*0.5
+def CaliperUpdate(obName, distance):
+	#print(obName, distance)
+	
+	return distance #dist.length
 
 # LOAD THE CALIPER INTO THE DRIVER NAMESPACE ON FILE LOAD	
 @persistent
@@ -51,6 +53,116 @@ def load_caliper_on_load_file(dummy):
 def load_caliper_on_scene_update(dummy):
 	if not bpy.app.driver_namespace.get('CaliperUpdate'):
 		bpy.app.driver_namespace['CaliperUpdate'] = CaliperUpdate
+		
+# Make a new caliper!
+def makeCaliper(context):
+
+	bpy.ops.object.select_all(action='DESELECT')
+
+	scn = context.scene
+	
+	# Add the caliper empty
+	caliper = bpy.data.objects.new('caliper', None)
+	scn.objects.link(caliper)
+	
+	# Make an empty for the start of measurement
+	start = bpy.data.objects.new('start', None)
+	scn.objects.link(start)
+	#start.hide_select = True
+	start.parent = caliper
+	#start.select = True
+	
+	end = bpy.data.objects.new('end', None)
+	scn.objects.link(end)
+	#end.hide_select = True
+	end.parent = start
+	#end.select = True
+	#end.location[0] = 2.0
+	
+	# Add a custom measurement property to the caliper's end
+	end['length'] = 0.0
+	
+	# Add the driver to the measurement so it gets auto updated
+	fcurve = end.driver_add('["length"]')
+	drv = fcurve.driver
+	drv.type = 'SCRIPTED'
+	
+	drv.show_debug_info = True
+	
+	# Make a new variable that measures the distance!
+	nvar = drv.variables.new()
+	nvar.name = 'distance'
+	nvar.type = 'LOC_DIFF'
+	
+	# Make the caliper the start of the measurement
+	targ1 = nvar.targets[0]
+	targ1.id = start
+	
+	# Make the end itself the end of the measurement
+	targ2 = nvar.targets[1]
+	targ2.id = end
+	
+	# Set the expression to use the variable we created
+	drv.expression = 'CaliperUpdate("'+end.name+'", '+nvar.name+')'
+	
+	
+	
+	# Now lets see if we can add a text object
+	crv = bpy.data.curves.new("length", 'FONT')
+	crv.align = 'CENTER'
+	text = bpy.data.objects.new('text', crv)
+	scn.objects.link(text)
+	text.parent = caliper
+	
+	# Lets add a mesh for the indication
+	me = bpy.data.meshes.new('arrow')
+	arrow = bpy.data.objects.new('arrow', me)
+	scn.objects.link(arrow)
+	arrow.parent = caliper
+	
+	coList = [(0.1,-0.1,-0.1),(0.1,0.1,-0.1),(-0.1,0.1,-0.1),(-0.1,-0.1,-0.1),(0.1,-0.1,0.1),(0.1,0.1,0.1),(-0.1,0.1,0.1),(-0.1,-0.1,0.1),(0.0,0.0,0.0),(-0.0,0.0,0.0),(0.0,0.0,0.0)]
+	poList = [(5,6,2,1),(5,1,9),(7,4,0,3),(0,1,2,3),(7,6,5,4),(7,3,8),(8,2,6),(3,2,8),(6,7,8),(4,5,9),(0,4,9),(1,0,9)]
+	sList = [0,1,4,5,9]
+	eList = [2,3,6,7,8]
+	
+	me.from_pydata(coList, [], poList)
+	
+	
+	# Add vertex groups for the start and end
+	sGroup = arrow.vertex_groups.new('start')
+	sGroup.add(sList, 1.0, 'REPLACE')
+	sHook = arrow.modifiers.new('startHook', 'HOOK')
+	sHook.vertex_group = sGroup.name
+	sHook.object = start
+	
+	
+	
+	eGroup = arrow.vertex_groups.new('end')
+	eGroup.add(eList, 1.0, 'REPLACE')
+	eHook = arrow.modifiers.new('endHook', 'HOOK')
+	eHook.vertex_group = eGroup.name
+	eHook.object = end
+	
+	# Select the arrow object
+	arrow.select = True
+	scn.objects.active = arrow
+	bpy.ops.object.mode_set(mode='EDIT')
+	
+	bpy.ops.object.hook_reset(modifier=sHook.name)
+	bpy.ops.object.hook_reset(modifier=eHook.name)
+	
+	bpy.ops.object.mode_set(mode='OBJECT')
+	
+	
+	
+	
+	print(sHook)
+	
+	
+	
+	# Hack to redraw the window to make sure dependencies are updated
+	bpy.ops.wm.redraw_timer(type='DRAW', iterations=10)
+
 	
 	
 	
@@ -64,22 +176,7 @@ class Add_Caliper(bpy.types.Operator):
 	def execute(self, context):
 		print('adding caliper')
 		
-		# Add an empty
-		bpy.ops.object.add(type='EMPTY', view_align=False, enter_editmode=False, location=(0,0,0), rotation=(0, 0, 0), layers=(True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False))
-		
-		# Retrieve a link to the new empty
-		caliper = context.active_object
-		caliper.name = 'Caliper'
-		
-		# Add a measurement property to the caliper
-		caliper['measurement'] = 0.0
-		
-		# Add the driver to the measurement so it gets auto updated
-		fcurve = caliper.driver_add('["measurement"]')
-		drv = fcurve.driver
-		drv.type = 'SCRIPTED'
-		drv.expression = 'CaliperUpdate(frame)'
-		drv.show_debug_info = True
+		makeCaliper(context)
 		
 		return {'FINISHED'}
 

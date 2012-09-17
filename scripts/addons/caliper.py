@@ -28,7 +28,7 @@ bl_info = {
 	"tracker_url": "",
 	"category": "Object"}
 
-import bpy, mathutils
+import bpy, mathutils, time
 from bpy.app.handlers import persistent
 
 # ########################################################
@@ -39,14 +39,9 @@ from bpy.app.handlers import persistent
 
 # DRIVER TO UPDATE THE CALIPERS
 def CaliperUpdate(textCurve, distance):
-
+	# Just set the textCurve's body as the distance... done
 	bpy.data.curves[textCurve].body = str(round(distance,6))
-	#bpy.data.curves[textCurve].update_tag()
-	#bpy.data.scenes['Scene'].update()
-	#bpy.context.scene.update()
-	bpy.ops.wm.redraw_timer(type='DRAW', iterations=1)
-	#bpy.data.curves[textCurve].body = 'aha' #str(distance)
-	#print(distance)
+
 	return distance #dist.length
 
 # LOAD THE CALIPER INTO THE DRIVER NAMESPACE ON FILE LOAD	
@@ -57,8 +52,20 @@ def load_caliper_on_load_file(dummy):
 # LOAD THE CALIPER INTO THE DRIVER NAMESPACE ON SCENE UPDATE	
 @persistent
 def load_caliper_on_scene_update(dummy):
+
 	if not bpy.app.driver_namespace.get('CaliperUpdate'):
 		bpy.app.driver_namespace['CaliperUpdate'] = CaliperUpdate
+
+	# Hack to update all curves that have a text body... hack!
+	try:
+		for c in bpy.data.curves:
+			try:
+				c.body = c.body
+			except:
+				pass
+	except:
+		pass
+
 		
 # Make a new caliper!
 def makeCaliper(context):
@@ -114,7 +121,7 @@ def makeCaliper(context):
 	crv = bpy.data.curves.new("length", 'FONT')
 	crv.align = 'CENTER'
 	crv.offset_y = 0.25
-	text = bpy.data.objects.new('text', crv)
+	text = bpy.data.objects.new(crv.name, crv)
 	scn.objects.link(text)
 	text.parent = caliper
 	
@@ -163,14 +170,6 @@ def makeCaliper(context):
 	# AT THE VERY END
 	# Set the expression to use the variable we created
 	drv.expression = 'CaliperUpdate("'+crv.name+'", '+nvar.name+')'
-	
-	
-	print(sHook)
-	
-	bpy.context.scene.update()
-	
-	# Hack to redraw the window to make sure dependencies are updated
-	bpy.ops.wm.redraw_timer(type='DRAW', iterations=1)
 
 	
 	

@@ -172,6 +172,35 @@ def makeCaliper(context):
 	drv.expression = 'CaliperUpdate("'+crv.name+'", '+nvar.name+')'
 
 	
+class SCENE_PT_caliper(bpy.types.Panel):
+	bl_label = "Caliper"
+	bl_space_type = "PROPERTIES"
+	bl_region_type = "WINDOW"
+	bl_context = "object"
+	
+	@classmethod
+	def poll(cls, context):
+		return (context.object.type == 'EMPTY')
+
+	def draw(self, context):
+		
+		layout = self.layout
+		
+		obj = context.object
+		
+		row = layout.row()
+		self.layout.label(text="Caliper options")
+		row.operator("scene.new", text="Do something")
+		
+		row = layout.row()
+		row.prop(obj, "hide_select")
+		
+		box = layout.box()
+		box.label("Selection Tools")
+		box.operator("object.select_all")
+			
+
+	
 	
 	
 # FUNCTION TO ADD A CALIPER TO THE SCENE
@@ -198,6 +227,8 @@ def register():
 	bpy.utils.register_module(__name__)
 	bpy.types.INFO_MT_add.append(menu_func)
 	
+	#bpy.utils.register_class(SCENE_PT_caliper)
+	
 	bpy.app.handlers.load_post.append(load_caliper_on_load_file)
 	bpy.app.handlers.scene_update_pre.append(load_caliper_on_scene_update)
 
@@ -205,6 +236,8 @@ def register():
 def unregister():
 	bpy.utils.unregister_module(__name__)
 	bpy.types.INFO_MT_add.remove(menu_func)
+	
+	#bpy.utils.unregister_class(SCENE_PT_caliper)
 
 
 if __name__ == "__main__":

@@ -64,17 +64,6 @@ def caliper_scene_update(dummy):
 
 	if not bpy.app.driver_namespace.get('CaliperUpdate'):
 		bpy.app.driver_namespace['CaliperUpdate'] = CaliperUpdate
-		
-	'''
-	calipers = []
-	try:
-		calipers = bpy.data.groups['calipers'].objects
-	except:
-		pass
-		
-	for ob in calipers:
-		break
-	'''
 	
 	# Hack to update all curves that have a text body... hack!
 	try:
@@ -86,9 +75,60 @@ def caliper_scene_update(dummy):
 	except:
 		pass
 		
+# Set the targets/locations for the caliper
 def CaliperSetTarget(self,context):
-	print(context.object.CaliperStartType)
-	print('setting',context.object.name)
+	
+	caliper = context.object
+	
+	# Get the start object
+	for ob in caliper.children:
+
+		# Find the start empty
+		if ob.CaliperStart:
+			
+			# If the type is vector we just set the relative location
+			if caliper.CaliperStartType == 'vector':
+				ob.location = caliper.CaliperStartVector
+				
+				# disable the copy location constraint
+				ob.constraints[0].mute = True
+				
+			# If it's object location we need to controll the constraint
+			elif caliper.CaliperStartType == 'object':
+				
+				if caliper.CaliperStartTarget:
+					ob.constraints[0].mute = False
+					ob.constraints[0].target = bpy.data.objects[caliper.CaliperStartTarget]
+					if caliper.CaliperStartSubtarget:
+						ob.constraints[0].subtarget = caliper.CaliperStartSubtarget
+					else:
+						ob.constraints[0].subtarget = ''
+						
+				else:
+					ob.constraints[0].mute = True
+					
+		elif ob.CaliperEnd:
+		
+			# We know the end empty is the only child of the start empty
+			if caliper.CaliperEndType == 'vector':
+				ob.location = caliper.CaliperEndVector
+				
+				# Do not use the copy location constraint
+				ob.constraints[0].mute = True
+				
+			elif caliper.CaliperEndType == 'object':
+				
+				if caliper.CaliperEndTarget:
+					ob.constraints[0].mute = False
+					ob.constraints[0].target = bpy.data.objects[caliper.CaliperEndTarget]
+					if caliper.CaliperEndSubtarget:
+						ob.constraints[0].subtarget = caliper.CaliperEndSubtarget
+					else:
+						ob.constraints[0].subtarget = ''
+				else:
+					ob.constraints[0].mute = True
+					
+	bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 	return
 
 		
@@ -109,31 +149,51 @@ def CaliperCreation(context):
 	scn.objects.link(caliper)
 	caliperGroup.objects.link(caliper)
 	caliper.Caliper = True
-	
+	caliper.show_name = True
+	caliper.CaliperStartVector = mathutils.Vector((-2.5,0,0))
+	caliper.CaliperEndVector = mathutils.Vector((2.5,0,0))
 	
 	# Make an empty for the start of measurement
 	start = bpy.data.objects.new('start', None)
 	scn.objects.link(start)
+	start.CaliperStart = True
 	c = start.constraints.new(type='COPY_LOCATION')
-	c.use_y = c.use_z =  False
-	#start.hide_select = True
+	c.mute = True
+	#c.use_y = c.use_z =  False
 	start.parent = caliper
+	start.hide = True
+	#start.hide_select = True
 	#start.select = True
 	
+	# Make an empty for the end of the measurement
 	end = bpy.data.objects.new('end', None)
 	scn.objects.link(end)
+	end.CaliperEnd = True
 	c = end.constraints.new(type='COPY_LOCATION')
-	c.use_y = c.use_z =  False
+	c.mute = True
+	end.parent = caliper
+	end.hide = True
 	#end.hide_select = True
-	end.parent = start
 	#end.select = True
 	#end.location[0] = 2.0
 	
+
+	
+	
+	# Now lets see if we can add a text object
+	crv = bpy.data.curves.new("length", 'FONT')
+	crv.align = 'CENTER'
+	crv.offset_y = 0.25
+	text = bpy.data.objects.new(crv.name, crv)
+	scn.objects.link(text)
+	text.parent = caliper
+	
+	
 	# Add a custom measurement property to the caliper's end
-	end['length'] = 0.0
+	text['length'] = 0.0
 	
 	# Add the driver to the measurement so it gets auto updated
-	fcurve = end.driver_add('["length"]')
+	fcurve = text.driver_add('["length"]')
 	drv = fcurve.driver
 	drv.type = 'SCRIPTED'
 	
@@ -153,14 +213,16 @@ def CaliperCreation(context):
 	targ2.id = end
 	
 	
-	
-	# Now lets see if we can add a text object
-	crv = bpy.data.curves.new("length", 'FONT')
-	crv.align = 'CENTER'
-	crv.offset_y = 0.25
-	text = bpy.data.objects.new(crv.name, crv)
-	scn.objects.link(text)
-	text.parent = caliper
+	# Make the text object stay in the middle of the measurement
+	c = text.constraints.new(type='COPY_LOCATION')
+	c.target = start
+	c = text.constraints.new(type='COPY_LOCATION')
+	c.target = end
+	c.influence = 0.5
+	c = text.constraints.new(type='TRACK_TO')
+	c.target = end
+	c.track_axis = 'TRACK_X'
+	c.up_axis = 'UP_Y'
 	
 	# Lets add a mesh for the indication
 	me = bpy.data.meshes.new('arrow')
@@ -175,22 +237,39 @@ def CaliperCreation(context):
 	
 	me.from_pydata(coList, [], poList)
 	
+	# Make the hooks!
+	sHook = bpy.data.objects.new('startHook', None)
+	scn.objects.link(sHook)
+	sHook.parent = start
+	sHook.hide = True
+	
+	eHook = bpy.data.objects.new('endHook', None)
+	scn.objects.link(eHook)
+	eHook.parent = end
+	eHook.hide = True
+	
 	
 	# Add vertex groups for the start and end
 	sGroup = arrow.vertex_groups.new('start')
 	sGroup.add(sList, 1.0, 'REPLACE')
-	sHook = arrow.modifiers.new('startHook', 'HOOK')
-	sHook.vertex_group = sGroup.name
-	sHook.object = start
-	
+	m = arrow.modifiers.new('startHook', 'HOOK')
+	m.vertex_group = sGroup.name
+	m.show_in_editmode = True
+	m.show_on_cage = True
+	m.object = sHook
 	
 	eGroup = arrow.vertex_groups.new('end')
 	eGroup.add(eList, 1.0, 'REPLACE')
-	eHook = arrow.modifiers.new('endHook', 'HOOK')
-	eHook.vertex_group = eGroup.name
-	eHook.object = end
+	m = arrow.modifiers.new('endHook', 'HOOK')
+	m.vertex_group = eGroup.name
+	m.show_in_editmode = True
+	m.show_on_cage = True
+	m.object = eHook
+	
+
 	
 	# Select the arrow object
+
 	arrow.select = True
 	scn.objects.active = arrow
 	bpy.ops.object.mode_set(mode='EDIT')
@@ -200,13 +279,31 @@ def CaliperCreation(context):
 	
 	bpy.ops.object.mode_set(mode='OBJECT')
 	
+	# Add constraints to the hook objects so they track each other
+	c = sHook.constraints.new(type='TRACK_TO')
+	c.target = end
+	c.track_axis = 'TRACK_X'
+	c.up_axis = 'UP_Y'
+	
+	c = eHook.constraints.new(type='TRACK_TO')
+	c.target = start
+	c.track_axis = 'TRACK_NEGATIVE_X'
+	c.up_axis = 'UP_Y'
+	
 	start.location[0] = -2.5
-	end.location[0] = 5.0
+	end.location[0] = 2.5
 	
 	
 	# AT THE VERY END
 	# Set the expression to use the variable we created
 	drv.expression = 'CaliperUpdate("'+crv.name+'", '+nvar.name+')'
+	
+	bpy.ops.object.select_all(action='DESELECT')
+	caliper.select = True
+	bpy.context.scene.objects.active = caliper
+	
+	
+	bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 
 	
 class SCENE_PT_caliper(bpy.types.Panel):
@@ -252,7 +349,7 @@ class SCENE_PT_caliper(bpy.types.Panel):
 		box.label("End")
 		box.prop(obj, "CaliperEndType")
 		if obj.CaliperEndType == 'vector':
-			box.prop(obj, "CaliperStartVector")
+			box.prop(obj, "CaliperEndVector")
 		else:
 			box.prop_search(obj, 'CaliperEndTarget', context.scene, 'objects')
 			
@@ -276,16 +373,18 @@ class SCENE_PT_caliper(bpy.types.Panel):
 def CaliperAddVariables():
 
 	bpy.types.Object.Caliper = bpy.props.BoolProperty()
+	bpy.types.Object.CaliperStart = bpy.props.BoolProperty()
+	bpy.types.Object.CaliperEnd = bpy.props.BoolProperty()
 
 	bpy.types.Object.CaliperStartType = bpy.props.EnumProperty(name='Type',items = [('vector','Location','A location vector with x,y,z coordinates'),('object','Object','The location of a specific 3D object')], update=CaliperSetTarget)
-	bpy.types.Object.CaliperStartVector = bpy.props.FloatVectorProperty(name='Location')
-	bpy.types.Object.CaliperStartTarget = bpy.props.StringProperty(name='Target')
-	bpy.types.Object.CaliperStartSubtarget = bpy.props.StringProperty(name='Vertex group')
+	bpy.types.Object.CaliperStartVector = bpy.props.FloatVectorProperty(name='Location', update=CaliperSetTarget)
+	bpy.types.Object.CaliperStartTarget = bpy.props.StringProperty(name='Target', update=CaliperSetTarget)
+	bpy.types.Object.CaliperStartSubtarget = bpy.props.StringProperty(name='Vertex group', update=CaliperSetTarget)
 
-	bpy.types.Object.CaliperEndType = bpy.props.EnumProperty(name='Type',items = [('vector','Location','A location vector with x,y,z coordinates'),('object','Object','The location of a specific 3D object')])
-	bpy.types.Object.CaliperEndVector = bpy.props.FloatVectorProperty(name='Location')
-	bpy.types.Object.CaliperEndTarget = bpy.props.StringProperty(name='Target')
-	bpy.types.Object.CaliperEndSubtarget = bpy.props.StringProperty(name='Vertex group')
+	bpy.types.Object.CaliperEndType = bpy.props.EnumProperty(name='Type',items = [('vector','Location','A location vector with x,y,z coordinates'),('object','Object','The location of a specific 3D object')], update=CaliperSetTarget)
+	bpy.types.Object.CaliperEndVector = bpy.props.FloatVectorProperty(name='Location', update=CaliperSetTarget)
+	bpy.types.Object.CaliperEndTarget = bpy.props.StringProperty(name='Target', update=CaliperSetTarget)
+	bpy.types.Object.CaliperEndSubtarget = bpy.props.StringProperty(name='Vertex group', update=CaliperSetTarget)
 	
 	
 	

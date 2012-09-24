@@ -31,6 +31,15 @@ bl_info = {
 import bpy, mathutils, time
 from bpy.app.handlers import persistent
 
+
+
+'''
+macouno, off to bed, there are 2 ways to get dropdown lists where you select an item from python.
+One by using a string property with a CollectionProperty - then layout.prop_search().
+Another is to use an enum property - then the UI can be made to have a search box, like searching operators.
+'''
+
+
 # ########################################################
 # By macouno
 # ########################################################
@@ -51,11 +60,22 @@ def load_caliper_on_load_file(dummy):
 
 # LOAD THE CALIPER INTO THE DRIVER NAMESPACE ON SCENE UPDATE	
 @persistent
-def load_caliper_on_scene_update(dummy):
+def caliper_scene_update(dummy):
 
 	if not bpy.app.driver_namespace.get('CaliperUpdate'):
 		bpy.app.driver_namespace['CaliperUpdate'] = CaliperUpdate
-
+		
+	'''
+	calipers = []
+	try:
+		calipers = bpy.data.groups['calipers'].objects
+	except:
+		pass
+		
+	for ob in calipers:
+		break
+	'''
+	
 	# Hack to update all curves that have a text body... hack!
 	try:
 		for c in bpy.data.curves:
@@ -65,28 +85,45 @@ def load_caliper_on_scene_update(dummy):
 				pass
 	except:
 		pass
+		
+def CaliperSetTarget(self,context):
+	print(context.object.CaliperStartType)
+	print('setting',context.object.name)
+	return
 
 		
 # Make a new caliper!
-def makeCaliper(context):
+def CaliperCreation(context):
 
 	bpy.ops.object.select_all(action='DESELECT')
 
 	scn = context.scene
 	
+	try:
+		caliperGroup = bpy.data.groups['calipers']
+	except:
+		caliperGroup = bpy.data.groups.new('calipers')
+	
 	# Add the caliper empty
 	caliper = bpy.data.objects.new('caliper', None)
 	scn.objects.link(caliper)
+	caliperGroup.objects.link(caliper)
+	caliper.Caliper = True
+	
 	
 	# Make an empty for the start of measurement
 	start = bpy.data.objects.new('start', None)
 	scn.objects.link(start)
+	c = start.constraints.new(type='COPY_LOCATION')
+	c.use_y = c.use_z =  False
 	#start.hide_select = True
 	start.parent = caliper
 	#start.select = True
 	
 	end = bpy.data.objects.new('end', None)
 	scn.objects.link(end)
+	c = end.constraints.new(type='COPY_LOCATION')
+	c.use_y = c.use_z =  False
 	#end.hide_select = True
 	end.parent = start
 	#end.select = True
@@ -180,7 +217,7 @@ class SCENE_PT_caliper(bpy.types.Panel):
 	
 	@classmethod
 	def poll(cls, context):
-		return (context.object.type == 'EMPTY')
+		return (context.object.Caliper == True)
 
 	def draw(self, context):
 		
@@ -188,24 +225,73 @@ class SCENE_PT_caliper(bpy.types.Panel):
 		
 		obj = context.object
 		
-		row = layout.row()
-		self.layout.label(text="Caliper options")
-		row.operator("scene.new", text="Do something")
+		#row = layout.row()
+		#self.layout.label(text="Caliper options")
+		#row.operator("scene.new", text="Do something")
+		#layout.prop(obj, "CaliperTarget", 'Target')
 		
+		#self.layout.label(text="Start")
+	
+		box = layout.box()
+		box.label("Start")
+		box.prop(obj, "CaliperStartType")
+		if obj.CaliperStartType == 'vector':
+			box.prop(obj, "CaliperStartVector")
+		else:
+			box.prop_search(obj, 'CaliperStartTarget', context.scene, 'objects')
+		
+			try:
+				target = bpy.data.objects[obj.CaliperStartTarget]
+				if target.type == 'MESH':
+					box.prop_search(obj, 'CaliperStartSubtarget',	target, 'vertex_groups')
+			except:
+				pass
+			
+		#self.layout.label(text="End")
+		box = layout.box()
+		box.label("End")
+		box.prop(obj, "CaliperEndType")
+		if obj.CaliperEndType == 'vector':
+			box.prop(obj, "CaliperStartVector")
+		else:
+			box.prop_search(obj, 'CaliperEndTarget', context.scene, 'objects')
+			
+			try:
+				target = bpy.data.objects[obj.CaliperStartTarget]
+				if target.type == 'MESH':
+					box.prop_search(obj, 'CaliperEndSubtarget',	target, 'vertex_groups')
+			except:
+				pass
+
+		'''
 		row = layout.row()
 		row.prop(obj, "hide_select")
 		
 		box = layout.box()
 		box.label("Selection Tools")
 		box.operator("object.select_all")
-			
+		'''
 
+# Add properties to objects
+def CaliperAddVariables():
+
+	bpy.types.Object.Caliper = bpy.props.BoolProperty()
+
+	bpy.types.Object.CaliperStartType = bpy.props.EnumProperty(name='Type',items = [('vector','Location','A location vector with x,y,z coordinates'),('object','Object','The location of a specific 3D object')], update=CaliperSetTarget)
+	bpy.types.Object.CaliperStartVector = bpy.props.FloatVectorProperty(name='Location')
+	bpy.types.Object.CaliperStartTarget = bpy.props.StringProperty(name='Target')
+	bpy.types.Object.CaliperStartSubtarget = bpy.props.StringProperty(name='Vertex group')
+
+	bpy.types.Object.CaliperEndType = bpy.props.EnumProperty(name='Type',items = [('vector','Location','A location vector with x,y,z coordinates'),('object','Object','The location of a specific 3D object')])
+	bpy.types.Object.CaliperEndVector = bpy.props.FloatVectorProperty(name='Location')
+	bpy.types.Object.CaliperEndTarget = bpy.props.StringProperty(name='Target')
+	bpy.types.Object.CaliperEndSubtarget = bpy.props.StringProperty(name='Vertex group')
 	
 	
 	
 # FUNCTION TO ADD A CALIPER TO THE SCENE
-class Add_Caliper(bpy.types.Operator):
-	bl_idname = "object.add_caliper"
+class Caliper_Add(bpy.types.Operator):
+	bl_idname = "object.caliper_add"
 	bl_label = "Caliper"
 	bl_options = {'REGISTER', 'UNDO'}
 		
@@ -213,24 +299,25 @@ class Add_Caliper(bpy.types.Operator):
 	def execute(self, context):
 		print('adding caliper')
 		
-		makeCaliper(context)
+		CaliperCreation(context)
 		
 		return {'FINISHED'}
 
 
 # Define menu item
 def menu_func(self, context):
-	self.layout.operator(Add_Caliper.bl_idname, icon='PLUGIN')
+	self.layout.operator(Caliper_Add.bl_idname, icon='PLUGIN')
 
 # Load and register
 def register():
 	bpy.utils.register_module(__name__)
 	bpy.types.INFO_MT_add.append(menu_func)
 	
+	CaliperAddVariables()
 	#bpy.utils.register_class(SCENE_PT_caliper)
 	
 	bpy.app.handlers.load_post.append(load_caliper_on_load_file)
-	bpy.app.handlers.scene_update_pre.append(load_caliper_on_scene_update)
+	bpy.app.handlers.scene_update_pre.append(caliper_scene_update)
 
 # Unregister
 def unregister():
@@ -238,7 +325,6 @@ def unregister():
 	bpy.types.INFO_MT_add.remove(menu_func)
 	
 	#bpy.utils.unregister_class(SCENE_PT_caliper)
-
 
 if __name__ == "__main__":
 	register()

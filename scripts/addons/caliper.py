@@ -48,16 +48,21 @@ Another is to use an enum property - then the UI can be made to have a search bo
 
 # DRIVER TO UPDATE THE CALIPERS
 def CaliperUpdate(textCurve, distance):
+
 	# Just set the textCurve's body as the distance... done
 	bpy.data.curves[textCurve].body = str(round(distance,6))
 
-	return distance #dist.length
+	return distance
 
+	
+	
 # LOAD THE CALIPER INTO THE DRIVER NAMESPACE ON FILE LOAD	
 @persistent
 def load_caliper_on_load_file(dummy):
 	bpy.app.driver_namespace['CaliperUpdate'] = CaliperUpdate
 
+	
+	
 # LOAD THE CALIPER INTO THE DRIVER NAMESPACE ON SCENE UPDATE	
 @persistent
 def caliper_scene_update(dummy):
@@ -75,62 +80,148 @@ def caliper_scene_update(dummy):
 	except:
 		pass
 		
+		
+		
+# GET THE END OR START OBJECT FROM THE CALIPER
+def CaliperGet(caliper, type):
+
+	# Get the start object
+	for ob in caliper.children:
+		if type == 'start' and ob.CaliperStart:
+			return ob
+		elif type == 'end' and ob.CaliperEnd:
+			return ob
+		elif type == 'arrow' and ob.type == 'MESH':
+			return ob
+			
+	return False
+	
+	
+	
 # Set the targets/locations for the caliper
 def CaliperSetTarget(self,context):
 	
 	caliper = context.object
 	
-	# Get the start object
-	for ob in caliper.children:
-
-		# Find the start empty
-		if ob.CaliperStart:
-			
-			# If the type is vector we just set the relative location
-			if caliper.CaliperStartType == 'vector':
-				ob.location = caliper.CaliperStartVector
-				
-				# disable the copy location constraint
-				ob.constraints[0].mute = True
-				
-			# If it's object location we need to controll the constraint
-			elif caliper.CaliperStartType == 'object':
-				
-				if caliper.CaliperStartTarget:
-					ob.constraints[0].mute = False
-					ob.constraints[0].target = bpy.data.objects[caliper.CaliperStartTarget]
-					if caliper.CaliperStartSubtarget:
-						ob.constraints[0].subtarget = caliper.CaliperStartSubtarget
-					else:
-						ob.constraints[0].subtarget = ''
-						
-				else:
-					ob.constraints[0].mute = True
-					
-		elif ob.CaliperEnd:
+	#Make sure this only runs on caliper objects, nothing else!
+	if caliper.Caliper:
+	
+		start = CaliperGet(caliper, 'start')
+		end = CaliperGet(caliper, 'end')
 		
-			# We know the end empty is the only child of the start empty
-			if caliper.CaliperEndType == 'vector':
-				ob.location = caliper.CaliperEndVector
-				
-				# Do not use the copy location constraint
-				ob.constraints[0].mute = True
-				
-			elif caliper.CaliperEndType == 'object':
-				
-				if caliper.CaliperEndTarget:
-					ob.constraints[0].mute = False
-					ob.constraints[0].target = bpy.data.objects[caliper.CaliperEndTarget]
-					if caliper.CaliperEndSubtarget:
-						ob.constraints[0].subtarget = caliper.CaliperEndSubtarget
-					else:
-						ob.constraints[0].subtarget = ''
+		# If the type is vector we just set the relative location
+		if caliper.CaliperStartType == 'vector':
+			start.location = caliper.CaliperStartVector
+			
+			# disable the copy location constraint
+			start.constraints[0].mute = True
+			
+		# If it's object location we need to controll the constraint
+		elif caliper.CaliperStartType == 'object':
+			
+			if caliper.CaliperStartTarget:
+				start.constraints[0].mute = False
+				start.constraints[0].target = bpy.data.objects[caliper.CaliperStartTarget]
+				if caliper.CaliperStartSubtarget:
+					start.constraints[0].subtarget = caliper.CaliperStartSubtarget
 				else:
-					ob.constraints[0].mute = True
+					start.constraints[0].subtarget = ''
 					
-	bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+			else:
+				start.constraints[0].mute = True
+			
+		# We know the end empty is the only child of the start empty
+		if caliper.CaliperEndType == 'vector':
+			end.location = caliper.CaliperEndVector
+			
+			# Do not use the copy location constraint
+			end.constraints[0].mute = True
+			
+		elif caliper.CaliperEndType == 'object':
+			
+			if caliper.CaliperEndTarget:
+				end.constraints[0].mute = False
+				end.constraints[0].target = bpy.data.objects[caliper.CaliperEndTarget]
+				if caliper.CaliperEndSubtarget:
+					end.constraints[0].subtarget = caliper.CaliperEndSubtarget
+				else:
+					end.constraints[0].subtarget = ''
+			else:
+				end.constraints[0].mute = True
+						
+		bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 	return
+	
+	
+	
+# Create the mesh for the caliper object!
+def CaliperMesh(self, context):
 
+	caliper = context.object
+
+	if caliper.Caliper:
+
+		# Remove the old arrow if one was created!
+		arrow = CaliperGet(caliper, 'arrow')
+		if arrow:
+			context.scene.objects.unlink(arrow)
+	
+		style = caliper.CaliperStyle
+
+		if style == 'square' or style == 'round':
+		
+			coList = [(0.1,-0.1,-0.1),(0.1,0.1,-0.1),(-0.1,0.1,-0.1),(-0.1,-0.1,-0.1),(0.1,-0.1,0.1),(0.1,0.1,0.1),(-0.1,0.1,0.1),(-0.1,-0.1,0.1),(0.0,0.0,0.0),(-0.0,0.0,0.0),(0.0,0.0,0.0)]
+			poList = [(5,6,2,1),(5,1,9),(7,4,0,3),(0,1,2,3),(7,6,5,4),(7,3,8),(8,2,6),(3,2,8),(6,7,8),(4,5,9),(0,4,9),(1,0,9)]
+			sList = [0,1,4,5,9]
+			eList = [2,3,6,7,8]
+		
+		# GET THE ARROW
+		# Lets add a mesh for the indication
+		me = bpy.data.meshes.new('arrow')
+		arrow = bpy.data.objects.new('arrow', me)
+		context.scene.objects.link(arrow)
+		arrow.parent = caliper
+		me.from_pydata(coList, [], poList)
+		return
+		
+		# Get the ends and the hooks!
+		start = CaliperGet(caliper, 'start')
+		sHook = start.children[0]
+		end = CaliperGet(caliper, 'end')
+		eHook = end.children[0]
+		
+		# Add vertex groups for the start and end
+		sGroup = arrow.vertex_groups.new('start')
+		sGroup.add(sList, 1.0, 'REPLACE')
+		m = arrow.modifiers.new('startHook', 'HOOK')
+		m.vertex_group = sGroup.name
+		m.show_in_editmode = True
+		m.show_on_cage = True
+		m.object = sHook
+		
+		eGroup = arrow.vertex_groups.new('end')
+		eGroup.add(eList, 1.0, 'REPLACE')
+		m = arrow.modifiers.new('endHook', 'HOOK')
+		m.vertex_group = eGroup.name
+		m.show_in_editmode = True
+		m.show_on_cage = True
+		m.object = eHook
+		
+		# Select the arrow object so that we can reset the hooks!
+		'''
+		arrow.select = True
+		context.scene.objects.active = arrow
+		bpy.ops.object.mode_set(mode='EDIT')
+		
+		bpy.ops.object.hook_reset(modifier=sHook.name)
+		bpy.ops.object.hook_reset(modifier=eHook.name)
+		
+		bpy.ops.object.mode_set(mode='OBJECT')
+		'''
+		
+
+	
+	return
 		
 # Make a new caliper!
 def CaliperCreation(context):
@@ -150,6 +241,7 @@ def CaliperCreation(context):
 	caliperGroup.objects.link(caliper)
 	caliper.Caliper = True
 	caliper.show_name = True
+	caliper.CaliperStyle = 'square'
 	caliper.CaliperStartVector = mathutils.Vector((-2.5,0,0))
 	caliper.CaliperEndVector = mathutils.Vector((2.5,0,0))
 	
@@ -176,8 +268,6 @@ def CaliperCreation(context):
 	#end.hide_select = True
 	#end.select = True
 	#end.location[0] = 2.0
-	
-
 	
 	
 	# Now lets see if we can add a text object
@@ -224,19 +314,6 @@ def CaliperCreation(context):
 	c.track_axis = 'TRACK_X'
 	c.up_axis = 'UP_Y'
 	
-	# Lets add a mesh for the indication
-	me = bpy.data.meshes.new('arrow')
-	arrow = bpy.data.objects.new('arrow', me)
-	scn.objects.link(arrow)
-	arrow.parent = caliper
-	
-	coList = [(0.1,-0.1,-0.1),(0.1,0.1,-0.1),(-0.1,0.1,-0.1),(-0.1,-0.1,-0.1),(0.1,-0.1,0.1),(0.1,0.1,0.1),(-0.1,0.1,0.1),(-0.1,-0.1,0.1),(0.0,0.0,0.0),(-0.0,0.0,0.0),(0.0,0.0,0.0)]
-	poList = [(5,6,2,1),(5,1,9),(7,4,0,3),(0,1,2,3),(7,6,5,4),(7,3,8),(8,2,6),(3,2,8),(6,7,8),(4,5,9),(0,4,9),(1,0,9)]
-	sList = [0,1,4,5,9]
-	eList = [2,3,6,7,8]
-	
-	me.from_pydata(coList, [], poList)
-	
 	# Make the hooks!
 	sHook = bpy.data.objects.new('startHook', None)
 	scn.objects.link(sHook)
@@ -247,37 +324,6 @@ def CaliperCreation(context):
 	scn.objects.link(eHook)
 	eHook.parent = end
 	eHook.hide = True
-	
-	
-	# Add vertex groups for the start and end
-	sGroup = arrow.vertex_groups.new('start')
-	sGroup.add(sList, 1.0, 'REPLACE')
-	m = arrow.modifiers.new('startHook', 'HOOK')
-	m.vertex_group = sGroup.name
-	m.show_in_editmode = True
-	m.show_on_cage = True
-	m.object = sHook
-	
-	eGroup = arrow.vertex_groups.new('end')
-	eGroup.add(eList, 1.0, 'REPLACE')
-	m = arrow.modifiers.new('endHook', 'HOOK')
-	m.vertex_group = eGroup.name
-	m.show_in_editmode = True
-	m.show_on_cage = True
-	m.object = eHook
-	
-
-	
-	# Select the arrow object
-
-	arrow.select = True
-	scn.objects.active = arrow
-	bpy.ops.object.mode_set(mode='EDIT')
-	
-	bpy.ops.object.hook_reset(modifier=sHook.name)
-	bpy.ops.object.hook_reset(modifier=eHook.name)
-	
-	bpy.ops.object.mode_set(mode='OBJECT')
 	
 	# Add constraints to the hook objects so they track each other
 	c = sHook.constraints.new(type='TRACK_TO')
@@ -292,7 +338,6 @@ def CaliperCreation(context):
 	
 	start.location[0] = -2.5
 	end.location[0] = 2.5
-	
 	
 	# AT THE VERY END
 	# Set the expression to use the variable we created
@@ -328,6 +373,11 @@ class SCENE_PT_caliper(bpy.types.Panel):
 		#layout.prop(obj, "CaliperTarget", 'Target')
 		
 		#self.layout.label(text="Start")
+		
+		box = layout.box()
+		box.label("Style")
+		box.prop(obj, "CaliperStyle")
+		#box.operator("object.caliper_mesh", text="Set")
 	
 		box = layout.box()
 		box.label("Start")
@@ -376,6 +426,8 @@ def CaliperAddVariables():
 	bpy.types.Object.CaliperStart = bpy.props.BoolProperty()
 	bpy.types.Object.CaliperEnd = bpy.props.BoolProperty()
 
+	bpy.types.Object.CaliperStyle = bpy.props.EnumProperty(name='Style',items = [('square','Square','A basic square pointed arrow'),('round','Round','A basic round pointed arrow')], update=CaliperMesh)
+	
 	bpy.types.Object.CaliperStartType = bpy.props.EnumProperty(name='Type',items = [('vector','Location','A location vector with x,y,z coordinates'),('object','Object','The location of a specific 3D object')], update=CaliperSetTarget)
 	bpy.types.Object.CaliperStartVector = bpy.props.FloatVectorProperty(name='Location', update=CaliperSetTarget)
 	bpy.types.Object.CaliperStartTarget = bpy.props.StringProperty(name='Target', update=CaliperSetTarget)

@@ -171,6 +171,14 @@ def CaliperArrowMake(scene, caliper):
 		poList = [(44,59,60),(44,54,55),(44,49,50),(44,10,45),(44,9,10),(44,4,5),(44,65,0),(44,60,61),(44,55,56),(44,50,51),(44,45,46),(44,5,6),(44,0,1),(44,61,62),(44,56,57),(44,51,52),(44,46,47),(44,6,7),(44,1,2),(44,62,63),(44,57,58),(44,52,53),(44,47,48),(44,7,8),(44,2,3),(44,63,64),(44,58,59),(44,53,54),(44,48,49),(44,8,9),(44,3,4),(44,64,65),(43,15,16),(43,41,42),(43,36,37),(43,31,32),(43,26,27),(43,21,22),(43,16,17),(43,11,12),(43,42,11),(43,37,38),(43,32,33),(43,27,28),(43,22,23),(43,17,18),(43,12,13),(43,38,39),(43,33,34),(43,28,29),(43,23,24),(43,18,19),(43,13,14),(43,39,40),(43,34,35),(43,29,30),(43,24,25),(43,19,20),(43,14,15),(43,40,41),(43,35,36),(43,30,31),(43,25,26),(43,20,21),(55,54,53,52,51,50,49,48,47,46,45,10,9,8,7,6,5,4,3,2,1,0,65,64,63,62,61,60,59,58,57,56),(13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,11,12),(10,9,12,11),(45,10,11,42),(46,45,42,41),(47,46,41,40),(48,47,40,39),(49,48,39,38),(50,49,38,37),(51,50,37,36),(52,51,36,35),(53,52,35,34),(54,53,34,33),(55,54,33,32),(56,55,32,31),(57,56,31,30),(58,57,30,29),(59,58,29,28),(60,59,28,27),(61,60,27,26),(62,61,26,25),(63,62,25,24),(64,63,24,23),(65,64,23,22),(0,65,22,21),(1,0,21,20),(2,1,20,19),(3,2,19,18),(4,3,18,17),(5,4,17,16),(6,5,16,15),(7,6,15,14),(8,7,14,13),(9,8,13,12)]
 		sList = [0,1,2,3,4,5,6,7,8,9,10,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65]
 		eList = [11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43]
+		
+	elif style == 'simple':
+		coList = [(-0.5,0.0,-0.5),(-0.5,0.1,0.1),(-0.5,-0.1,0.1),(-0.5,0.0,0.5),(0.0,0.0,0.0),(0.5,0.0,-0.5),(-0.5,-0.1,-0.1),(-0.5,0.1,-0.1),(0.5,0.1,-0.1),(0.5,-0.1,-0.1),(0.5,0.1,0.1),(0.5,-0.1,0.1),(0.5,0.0,0.5),(0.0,0.0,0.0)]
+		poList = [(4,7,1),(11,10,1,2),(1,10,8,7),(3,2,1),(3,2,4),(13,8,10),(6,7,8,9),(0,7,6),(5,8,9),(7,0,4),(9,5,13),(11,9,13),(12,11,13),(8,5,13),(2,6,4),(6,0,4),(11,2,6,9),(1,3,4),(10,12,13),(12,11,10)]
+		sList = [5,8,9,10,11,12,13]
+		eList = [0,1,2,3,4,6,7]
+
+
 	
 	# GET THE ARROW
 	# Lets add a mesh for the indication
@@ -313,6 +321,7 @@ def CaliperCreation(context):
 	crv = bpy.data.curves.new("length", 'FONT')
 	crv.align = 'CENTER'
 	crv.offset_y = 0.25
+	crv.extrude = 0.05
 	text = bpy.data.objects.new(crv.name, crv)
 	scn.objects.link(text)
 	text.parent = caliper
@@ -357,12 +366,12 @@ def CaliperCreation(context):
 	sHook = bpy.data.objects.new('startHook', None)
 	scn.objects.link(sHook)
 	sHook.parent = start
-	#sHook.hide = True
+	sHook.hide = True
 	
 	eHook = bpy.data.objects.new('endHook', None)
 	scn.objects.link(eHook)
 	eHook.parent = end
-	#eHook.hide = True
+	eHook.hide = True
 	
 	# Add constraints to the hook objects so they track each other
 	c = sHook.constraints.new(type='TRACK_TO')
@@ -469,7 +478,7 @@ def CaliperAddVariables():
 	bpy.types.Object.CaliperStart = bpy.props.BoolProperty()
 	bpy.types.Object.CaliperEnd = bpy.props.BoolProperty()
 
-	bpy.types.Object.CaliperStyle = bpy.props.EnumProperty(name='Arrow',items = [('square','Square','A basic square pointed arrow'),('round','Round','A basic round pointed arrow')], update=CaliperArrowUpdate)
+	bpy.types.Object.CaliperStyle = bpy.props.EnumProperty(name='Arrow',items = [('square','Square','A basic square pointed arrow'),('round','Round','A basic round pointed arrow'),('simple','Simple','The original wide pointed arrow')], update=CaliperArrowUpdate)
 	
 	bpy.types.Object.CaliperStartType = bpy.props.EnumProperty(name='Type',items = [('vector','Location','A location vector with x,y,z coordinates'),('object','Object','The location of a specific 3D object')], update=CaliperSetTarget)
 	bpy.types.Object.CaliperStartVector = bpy.props.FloatVectorProperty(name='Location', update=CaliperSetTarget)

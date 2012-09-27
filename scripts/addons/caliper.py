@@ -154,74 +154,113 @@ def CaliperSetTarget(self,context):
 	
 	
 	
+# MAKE THE ARROW OBJECT AND MESH
+def CaliperArrowMake(scene, caliper):
+
+	style = caliper.CaliperStyle
+
+	if style == 'square':
+	
+		coList = [(0.1,-0.1,-0.1),(0.1,0.1,-0.1),(-0.1,0.1,-0.1),(-0.1,-0.1,-0.1),(0.1,-0.1,0.1),(0.1,0.1,0.1),(-0.1,0.1,0.1),(-0.1,-0.1,0.1),(0.0,0.0,0.0),(-0.0,0.0,0.0),(0.0,0.0,0.0)]
+		poList = [(5,6,2,1),(5,1,9),(7,4,0,3),(0,1,2,3),(7,6,5,4),(7,3,8),(8,2,6),(3,2,8),(6,7,8),(4,5,9),(0,4,9),(1,0,9)]
+		sList = [0,1,4,5,9]
+		eList = [2,3,6,7,8]
+		
+	elif style == 'round':
+		coList = [(0.1,-0.0924,-0.0383),(0.1,-0.0981,-0.0195),(0.1,-0.1,0.0),(0.1,-0.0981,0.0195),(0.1,-0.0924,0.0383),(0.1,-0.0831,0.0556),(0.1,-0.0707,0.0707),(0.1,-0.0556,0.0831),(0.1,-0.0383,0.0924),(0.1,-0.0195,0.0981),(0.1,0.0,0.1),(-0.1,0.0,0.1),(-0.1,-0.0195,0.0981),(-0.1,-0.0383,0.0924),(-0.1,-0.0556,0.0831),(-0.1,-0.0707,0.0707),(-0.1,-0.0831,0.0556),(-0.1,-0.0924,0.0383),(-0.1,-0.0981,0.0195),(-0.1,-0.1,0.0),(-0.1,-0.0981,-0.0195),(-0.1,-0.0924,-0.0383),(-0.1,-0.0831,-0.0556),(-0.1,-0.0707,-0.0707),(-0.1,-0.0556,-0.0831),(-0.1,-0.0383,-0.0924),(-0.1,-0.0195,-0.0981),(-0.1,0.0,-0.1),(-0.1,0.0195,-0.0981),(-0.1,0.0383,-0.0924),(-0.1,0.0556,-0.0831),(-0.1,0.0707,-0.0707),(-0.1,0.0831,-0.0556),(-0.1,0.0924,-0.0383),(-0.1,0.0981,-0.0195),(-0.1,0.1,0.0),(-0.1,0.0981,0.0195),(-0.1,0.0924,0.0383),(-0.1,0.0831,0.0556),(-0.1,0.0707,0.0707),(-0.1,0.0556,0.0831),(-0.1,0.0383,0.0924),(-0.1,0.0195,0.0981),(0.0,-0.0,0.0),(0.0,-0.0,0.0),(0.1,0.0195,0.0981),(0.1,0.0383,0.0924),(0.1,0.0556,0.0831),(0.1,0.0707,0.0707),(0.1,0.0831,0.0556),(0.1,0.0924,0.0383),(0.1,0.0981,0.0195),(0.1,0.1,0.0),(0.1,0.0981,-0.0195),(0.1,0.0924,-0.0383),(0.1,0.0831,-0.0556),(0.1,0.0707,-0.0707),(0.1,0.0556,-0.0831),(0.1,0.0383,-0.0924),(0.1,0.0195,-0.0981),(0.1,0.0,-0.1),(0.1,-0.0195,-0.0981),(0.1,-0.0383,-0.0924),(0.1,-0.0556,-0.0831),(0.1,-0.0707,-0.0707),(0.1,-0.0831,-0.0556)]
+		poList = [(44,59,60),(44,54,55),(44,49,50),(44,10,45),(44,9,10),(44,4,5),(44,65,0),(44,60,61),(44,55,56),(44,50,51),(44,45,46),(44,5,6),(44,0,1),(44,61,62),(44,56,57),(44,51,52),(44,46,47),(44,6,7),(44,1,2),(44,62,63),(44,57,58),(44,52,53),(44,47,48),(44,7,8),(44,2,3),(44,63,64),(44,58,59),(44,53,54),(44,48,49),(44,8,9),(44,3,4),(44,64,65),(43,15,16),(43,41,42),(43,36,37),(43,31,32),(43,26,27),(43,21,22),(43,16,17),(43,11,12),(43,42,11),(43,37,38),(43,32,33),(43,27,28),(43,22,23),(43,17,18),(43,12,13),(43,38,39),(43,33,34),(43,28,29),(43,23,24),(43,18,19),(43,13,14),(43,39,40),(43,34,35),(43,29,30),(43,24,25),(43,19,20),(43,14,15),(43,40,41),(43,35,36),(43,30,31),(43,25,26),(43,20,21),(55,54,53,52,51,50,49,48,47,46,45,10,9,8,7,6,5,4,3,2,1,0,65,64,63,62,61,60,59,58,57,56),(13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,11,12),(10,9,12,11),(45,10,11,42),(46,45,42,41),(47,46,41,40),(48,47,40,39),(49,48,39,38),(50,49,38,37),(51,50,37,36),(52,51,36,35),(53,52,35,34),(54,53,34,33),(55,54,33,32),(56,55,32,31),(57,56,31,30),(58,57,30,29),(59,58,29,28),(60,59,28,27),(61,60,27,26),(62,61,26,25),(63,62,25,24),(64,63,24,23),(65,64,23,22),(0,65,22,21),(1,0,21,20),(2,1,20,19),(3,2,19,18),(4,3,18,17),(5,4,17,16),(6,5,16,15),(7,6,15,14),(8,7,14,13),(9,8,13,12)]
+		sList = [0,1,2,3,4,5,6,7,8,9,10,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65]
+		eList = [11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43]
+	
+	# GET THE ARROW
+	# Lets add a mesh for the indication
+	me = bpy.data.meshes.new('arrow')
+	arrow = bpy.data.objects.new('arrow', me)
+	scene.objects.link(arrow)
+	arrow.parent = caliper
+	me.from_pydata(coList, [], poList)
+	
+	# Get the ends and the hooks!
+	start = CaliperGet(caliper, 'start')
+	sLoc = mathutils.Vector(start.location)
+	sMute = start.constraints[0].mute
+	start.constraints[0].mute = True
+	sHook = start.children[0]
+	
+	end = CaliperGet(caliper, 'end')
+	eLoc = mathutils.Vector(end.location)
+	eMute = end.constraints[0].mute
+	end.constraints[0].mute = True
+	eHook = end.children[0]
+	
+	# Add vertex groups for the start and end
+	sGroup = arrow.vertex_groups.new('start')
+	sGroup.add(sList, 1.0, 'REPLACE')
+	
+	# Add a hook modifier to the new group
+	m = arrow.modifiers.new('startHook', 'HOOK')
+	m.vertex_group = sGroup.name
+	m.show_in_editmode = True
+	m.show_on_cage = True
+	m.object = sHook
+	
+	eGroup = arrow.vertex_groups.new('end')
+	eGroup.add(eList, 1.0, 'REPLACE')
+	
+	m = arrow.modifiers.new('endHook', 'HOOK')
+	m.vertex_group = eGroup.name
+	m.show_in_editmode = True
+	m.show_on_cage = True
+	m.object = eHook
+	
+	# Select the arrow object so that we can reset the hooks!
+	bpy.ops.object.select_all(action='DESELECT')
+	arrow.select = True
+	scene.objects.active = arrow
+	bpy.ops.object.mode_set(mode='EDIT')
+	
+	# Reset the hooks... so they start at 0,0,0
+	start.location = mathutils.Vector((0.0,0.0,0.0))
+	end.location = mathutils.Vector((2.5,0.0,0.0))
+	bpy.ops.object.hook_reset(modifier=sHook.name)
+
+	start.location = mathutils.Vector((-2.5,0.0,0.0))
+	end.location = mathutils.Vector((0.0,0.0,0.0))
+	bpy.ops.object.hook_reset(modifier=eHook.name)
+	
+	bpy.ops.object.mode_set(mode='OBJECT')
+	
+	bpy.ops.object.select_all(action='DESELECT')
+	caliper.select = True
+	scene.objects.active = caliper
+	
+	# Set the start and end location back to what they were
+	start.location = sLoc
+	start.constraints[0].mute = sMute
+	end.location = eLoc
+	end.constraints[0].mute = eMute
+	
+
+	
+	return
+	
 # Create the mesh for the caliper object!
-def CaliperMesh(self, context):
+def CaliperArrowUpdate(self, context):
 
 	caliper = context.object
 
 	if caliper.Caliper:
-
+	
 		# Remove the old arrow if one was created!
 		arrow = CaliperGet(caliper, 'arrow')
 		if arrow:
+			arrow.parent = None
 			context.scene.objects.unlink(arrow)
 	
-		style = caliper.CaliperStyle
-
-		if style == 'square' or style == 'round':
-		
-			coList = [(0.1,-0.1,-0.1),(0.1,0.1,-0.1),(-0.1,0.1,-0.1),(-0.1,-0.1,-0.1),(0.1,-0.1,0.1),(0.1,0.1,0.1),(-0.1,0.1,0.1),(-0.1,-0.1,0.1),(0.0,0.0,0.0),(-0.0,0.0,0.0),(0.0,0.0,0.0)]
-			poList = [(5,6,2,1),(5,1,9),(7,4,0,3),(0,1,2,3),(7,6,5,4),(7,3,8),(8,2,6),(3,2,8),(6,7,8),(4,5,9),(0,4,9),(1,0,9)]
-			sList = [0,1,4,5,9]
-			eList = [2,3,6,7,8]
-		
-		# GET THE ARROW
-		# Lets add a mesh for the indication
-		me = bpy.data.meshes.new('arrow')
-		arrow = bpy.data.objects.new('arrow', me)
-		context.scene.objects.link(arrow)
-		arrow.parent = caliper
-		me.from_pydata(coList, [], poList)
-		return
-		
-		# Get the ends and the hooks!
-		start = CaliperGet(caliper, 'start')
-		sHook = start.children[0]
-		end = CaliperGet(caliper, 'end')
-		eHook = end.children[0]
-		
-		# Add vertex groups for the start and end
-		sGroup = arrow.vertex_groups.new('start')
-		sGroup.add(sList, 1.0, 'REPLACE')
-		m = arrow.modifiers.new('startHook', 'HOOK')
-		m.vertex_group = sGroup.name
-		m.show_in_editmode = True
-		m.show_on_cage = True
-		m.object = sHook
-		
-		eGroup = arrow.vertex_groups.new('end')
-		eGroup.add(eList, 1.0, 'REPLACE')
-		m = arrow.modifiers.new('endHook', 'HOOK')
-		m.vertex_group = eGroup.name
-		m.show_in_editmode = True
-		m.show_on_cage = True
-		m.object = eHook
-		
-		# Select the arrow object so that we can reset the hooks!
-		'''
-		arrow.select = True
-		context.scene.objects.active = arrow
-		bpy.ops.object.mode_set(mode='EDIT')
-		
-		bpy.ops.object.hook_reset(modifier=sHook.name)
-		bpy.ops.object.hook_reset(modifier=eHook.name)
-		
-		bpy.ops.object.mode_set(mode='OBJECT')
-		'''
+		CaliperArrowMake(context.scene, caliper)
 		
 
-	
-	return
+
 		
 # Make a new caliper!
 def CaliperCreation(context):
@@ -318,23 +357,27 @@ def CaliperCreation(context):
 	sHook = bpy.data.objects.new('startHook', None)
 	scn.objects.link(sHook)
 	sHook.parent = start
-	sHook.hide = True
+	#sHook.hide = True
 	
 	eHook = bpy.data.objects.new('endHook', None)
 	scn.objects.link(eHook)
 	eHook.parent = end
-	eHook.hide = True
+	#eHook.hide = True
 	
 	# Add constraints to the hook objects so they track each other
 	c = sHook.constraints.new(type='TRACK_TO')
 	c.target = end
-	c.track_axis = 'TRACK_X'
+	c.track_axis = 'TRACK_Z'
 	c.up_axis = 'UP_Y'
 	
 	c = eHook.constraints.new(type='TRACK_TO')
 	c.target = start
-	c.track_axis = 'TRACK_NEGATIVE_X'
+	c.track_axis = 'TRACK_NEGATIVE_Z'
 	c.up_axis = 'UP_Y'
+	
+
+	# Create the mesh for the caliper
+	CaliperArrowMake(scn, caliper)
 	
 	start.location[0] = -2.5
 	end.location[0] = 2.5
@@ -426,7 +469,7 @@ def CaliperAddVariables():
 	bpy.types.Object.CaliperStart = bpy.props.BoolProperty()
 	bpy.types.Object.CaliperEnd = bpy.props.BoolProperty()
 
-	bpy.types.Object.CaliperStyle = bpy.props.EnumProperty(name='Style',items = [('square','Square','A basic square pointed arrow'),('round','Round','A basic round pointed arrow')], update=CaliperMesh)
+	bpy.types.Object.CaliperStyle = bpy.props.EnumProperty(name='Arrow',items = [('square','Square','A basic square pointed arrow'),('round','Round','A basic round pointed arrow')], update=CaliperArrowUpdate)
 	
 	bpy.types.Object.CaliperStartType = bpy.props.EnumProperty(name='Type',items = [('vector','Location','A location vector with x,y,z coordinates'),('object','Object','The location of a specific 3D object')], update=CaliperSetTarget)
 	bpy.types.Object.CaliperStartVector = bpy.props.FloatVectorProperty(name='Location', update=CaliperSetTarget)

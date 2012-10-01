@@ -28,7 +28,7 @@ bl_info = {
 	"tracker_url": "",
 	"category": "Object"}
 
-import bpy, mathutils, time
+import bpy, mathutils, time, math
 from bpy.app.handlers import persistent
 
 
@@ -44,13 +44,105 @@ Another is to use an enum property - then the UI can be made to have a search bo
 # By macouno
 # ########################################################
 
+def getMetric(distance, separate, precision):
+	
+	pSteps = 0
+	m = distance
+	distance = ''
+	
+	# Now whatever the distance is is in meters!
+	# So lets see what it is in the largest scale!
+	
+	km = m / 1000
+	fKm = math.floor(km)
+	
+	
+	if fKm and not separate:
+		return str(round(km,precision))+'km'
+		
+	elif fKm:
+		pSteps+=1
+		if pSteps >= precision:
+			return str(int(round(km)))+'km'
+		distance = str(int(fKm))+'km'
+	
+	# We know it in km, now meters!
+	m = (km - fKm) * 1000
+	fM = math.floor(m)
+	
+	if fM and not separate:
+		return str(round(m,precision))+'m'
+	
+	elif fM:
+		pSteps+=1
+		if pSteps >= precision:
+			return distance+' '+str(int(round(m)))+'m'
+		
+		distance = distance+' '+str(int(fM))+'m'
+		
+	
+		
+	# We know meters how about centimeters!
+	cm = (m - fM) * 10
+	fCm = math.floor(cm)
+	
+	if fCm and not separate:
+		return str(round(cm,precision))+'cm'
+	
+	elif fCm:
+		pSteps+=1
+		if pSteps >= precision:
+			return distance+' '+str(int(round(cm)))+'mm'
+		distance = distance+' '+str(int(fCm))+'cm'
 
+
+	# We know centimeters how about millimeters!
+	mm = (cm - fCm) * 10
+	fMm = math.floor(mm)
+	
+	if fMm and not separate:
+		return str(round(mm,precision))+'mm'
+	
+	elif fMm:
+		return distance+' '+str(int(round(mm)))+'mm'
+	
+	if distance == '':
+		return '0mm'
+
+	return distance
+	
 
 # DRIVER TO UPDATE THE CALIPERS
-def CaliperUpdate(textCurve, distance):
+def CaliperUpdate(caliperName, textCurve, distance):
 
-	# Just set the textCurve's body as the distance... done
-	bpy.data.curves[textCurve].body = str(round(distance,6))
+	caliper = bpy.data.objects[caliperName]
+	precision = caliper.CaliperPrecision
+
+	unit_settings = bpy.context.scene.unit_settings
+	system = unit_settings.system
+	
+	# Some preparation for whatever comes next
+	if system != 'NONE':
+		separate = unit_settings.use_separate
+		distance = distance * unit_settings.scale_length
+
+	# Make a neat metric measurement for the text body
+	if system == 'METRIC':
+		bpy.data.curves[textCurve].body = getMetric(distance, separate, precision)
+		
+	# Make a neat imperial measurement for the text body
+	elif system == 'IMPERIAL':
+		
+		print('imperial')
+		bpy.data.curves[textCurve].body = str(distance)
+	
+	# IF we do things in Blender units, we just round it somewhat... for precision
+	else:
+		
+		distance = round(distance, 4)
+		
+		# Just set the textCurve's body as the distance... done
+		bpy.data.curves[textCurve].body = str(distance)
 
 	return distance
 
@@ -291,6 +383,7 @@ def CaliperCreation(context):
 	caliper.CaliperStyle = 'square'
 	caliper.CaliperStartVector = mathutils.Vector((-2.5,0,0))
 	caliper.CaliperEndVector = mathutils.Vector((2.5,0,0))
+	caliper.CaliperPrecision = 2
 	
 	# Make an empty for the start of measurement
 	start = bpy.data.objects.new('start', None)
@@ -393,7 +486,7 @@ def CaliperCreation(context):
 	
 	# AT THE VERY END
 	# Set the expression to use the variable we created
-	drv.expression = 'CaliperUpdate("'+crv.name+'", '+nvar.name+')'
+	drv.expression = 'CaliperUpdate("'+caliper.name+'","'+crv.name+'", '+nvar.name+')'
 	
 	bpy.ops.object.select_all(action='DESELECT')
 	caliper.select = True
@@ -429,6 +522,7 @@ class SCENE_PT_caliper(bpy.types.Panel):
 		box = layout.box()
 		box.label("Style")
 		box.prop(obj, "CaliperStyle")
+		box.prop(obj, "CaliperPrecision")
 		#box.operator("object.caliper_mesh", text="Set")
 	
 		box = layout.box()
@@ -479,6 +573,7 @@ def CaliperAddVariables():
 	bpy.types.Object.CaliperEnd = bpy.props.BoolProperty()
 
 	bpy.types.Object.CaliperStyle = bpy.props.EnumProperty(name='Arrow',items = [('square','Square','A basic square pointed arrow'),('round','Round','A basic round pointed arrow'),('simple','Simple','The original wide pointed arrow')], update=CaliperArrowUpdate)
+	bpy.types.Object.CaliperPrecision = bpy.props.IntProperty(name='Precision', min=1, max=10, step=1, update=CaliperArrowUpdate)
 	
 	bpy.types.Object.CaliperStartType = bpy.props.EnumProperty(name='Type',items = [('vector','Location','A location vector with x,y,z coordinates'),('object','Object','The location of a specific 3D object')], update=CaliperSetTarget)
 	bpy.types.Object.CaliperStartVector = bpy.props.FloatVectorProperty(name='Location', update=CaliperSetTarget)

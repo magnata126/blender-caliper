@@ -32,31 +32,23 @@ import bpy, mathutils, time, math
 from bpy.app.handlers import persistent
 
 
-
-'''
-macouno, off to bed, there are 2 ways to get dropdown lists where you select an item from python.
-One by using a string property with a CollectionProperty - then layout.prop_search().
-Another is to use an enum property - then the UI can be made to have a search box, like searching operators.
-'''
-
-
 # ########################################################
 # By macouno
 # ########################################################
 
 def addDistance(distance, length, unit):
-	
 	if distance:
 		return distance+' '+str(int(length))+unit
-	#else
 	return str(int(length))+unit
 
 
 # FUNCTION FOR MAKING A NEAT METRIC SYSTEM MEASUREMENT STRING
-def getMeasureString(system, distance, unit_settings, precision):
+def getMeasureString(distance, unit_settings, precision):
 	
+	system = unit_settings.system
+	# Whether or not so separate the measurement into multiple units
 	separate = unit_settings.use_separate
-	
+	# The current measurement (multiplied by scale to get meters as a starting point)
 	m = distance * unit_settings.scale_length
 	fM = 0
 	distance = False
@@ -92,32 +84,55 @@ def getMeasureString(system, distance, unit_settings, precision):
 	return distance
 	
 	
+# CLEANUP CALIPERS
+@persistent
+def CaliperCheck(dummy):
+	scn = bpy.context.scene
+	
+	# Make a list of all caliper parts without a parent
+	# And add the calipers that don't have enough children
+	remove = [ob for ob in scn.objects if (ob.CaliperBit and (ob.parent == None or not ob.parent.name in scn.objects)) or (ob.Caliper and len(ob.children) < 4)]
+	
+	if len(remove):
+		for ob in remove:
+			ob.select = False
+			bpy.context.scene.objects.unlink(ob)
+	return
+	
 
 # DRIVER TO UPDATE THE CALIPERS
 def CaliperUpdate(caliperName, textCurve, distance):
 
-	caliper = bpy.data.objects[caliperName]
-	precision = caliper.CaliperPrecision
+	# We try an update
+	try:
+		caliper = bpy.data.objects[caliperName]
+		precision = caliper.CaliperPrecision
 
-	unit_settings = bpy.context.scene.unit_settings
-	system = unit_settings.system
-	
-	# Some preparation for whatever comes next
-	if system != 'NONE':
-		bpy.data.curves[textCurve].body = getMeasureString(system, distance, unit_settings, precision)
-	
-	# IF we do things in Blender units, we just round it somewhat... for precision
-	else:
-		# Just set the textCurve's body as the distance... done
-		bpy.data.curves[textCurve].body = str(round(distance, precision))
+		unit_settings = bpy.context.scene.unit_settings
+		
+		# Some preparation for whatever comes next
+		if unit_settings.system != 'NONE':
+			bpy.data.curves[textCurve].body = getMeasureString(distance, unit_settings, precision)
+		
+		# IF we do things in Blender units, we just round it somewhat... for precision
+		else:
+			# Just set the textCurve's body as the distance... done
+			bpy.data.curves[textCurve].body = str(round(distance, precision))
 
-	return distance
+		return distance
+		
+	# If the update fails we try a check
+	except:
+		bpy.data.curves[textCurve].body = 'error'
+		CaliperCheck(0)
+		return 0.0
 
 	
 	
 # LOAD THE CALIPER INTO THE DRIVER NAMESPACE ON FILE LOAD	
 @persistent
 def load_caliper_on_load_file(dummy):
+	CaliperCheck(0)
 	bpy.app.driver_namespace['CaliperUpdate'] = CaliperUpdate
 
 	
@@ -126,8 +141,11 @@ def load_caliper_on_load_file(dummy):
 @persistent
 def caliper_scene_update(dummy):
 
+	
 	if not bpy.app.driver_namespace.get('CaliperUpdate'):
 		bpy.app.driver_namespace['CaliperUpdate'] = CaliperUpdate
+	
+	CaliperCheck(0)
 	
 	# Hack to update all curves that have a text body... hack!
 	try:
@@ -219,7 +237,6 @@ def CaliperArrowMake(scene, caliper):
 	style = caliper.CaliperStyle
 
 	if style == 'square':
-	
 		coList = [(0.1,-0.1,-0.1),(0.1,0.1,-0.1),(-0.1,0.1,-0.1),(-0.1,-0.1,-0.1),(0.1,-0.1,0.1),(0.1,0.1,0.1),(-0.1,0.1,0.1),(-0.1,-0.1,0.1),(0.0,0.0,0.0),(-0.0,0.0,0.0),(0.0,0.0,0.0)]
 		poList = [(5,6,2,1),(5,1,9),(7,4,0,3),(0,1,2,3),(7,6,5,4),(7,3,8),(8,2,6),(3,2,8),(6,7,8),(4,5,9),(0,4,9),(1,0,9)]
 		sList = [0,1,4,5,9]
@@ -244,6 +261,7 @@ def CaliperArrowMake(scene, caliper):
 	me = bpy.data.meshes.new('arrow')
 	arrow = bpy.data.objects.new('arrow', me)
 	scene.objects.link(arrow)
+	arrow.CaliperBit = True
 	arrow.parent = caliper
 	me.from_pydata(coList, [], poList)
 	
@@ -307,9 +325,9 @@ def CaliperArrowMake(scene, caliper):
 	end.location = eLoc
 	end.constraints[0].mute = eMute
 	
-
-	
 	return
+	
+	
 	
 # Create the mesh for the caliper object!
 def CaliperArrowUpdate(self, context):
@@ -328,7 +346,6 @@ def CaliperArrowUpdate(self, context):
 		
 
 
-		
 # Make a new caliper!
 def CaliperCreation(context):
 
@@ -355,6 +372,7 @@ def CaliperCreation(context):
 	# Make an empty for the start of measurement
 	start = bpy.data.objects.new('start', None)
 	scn.objects.link(start)
+	start.CaliperBit = True
 	start.CaliperStart = True
 	c = start.constraints.new(type='COPY_LOCATION')
 	c.mute = True
@@ -367,6 +385,7 @@ def CaliperCreation(context):
 	# Make an empty for the end of the measurement
 	end = bpy.data.objects.new('end', None)
 	scn.objects.link(end)
+	end.CaliperBit = True
 	end.CaliperEnd = True
 	c = end.constraints.new(type='COPY_LOCATION')
 	c.mute = True
@@ -383,6 +402,7 @@ def CaliperCreation(context):
 	crv.offset_y = 0.25
 	crv.extrude = 0.05
 	text = bpy.data.objects.new(crv.name, crv)
+	text.CaliperBit = True
 	scn.objects.link(text)
 	text.parent = caliper
 	
@@ -425,11 +445,13 @@ def CaliperCreation(context):
 	# Make the hooks!
 	sHook = bpy.data.objects.new('startHook', None)
 	scn.objects.link(sHook)
+	sHook.CaliperBit = True
 	sHook.parent = start
 	sHook.hide = True
 	
 	eHook = bpy.data.objects.new('endHook', None)
 	scn.objects.link(eHook)
+	eHook.CaliperBit = True
 	eHook.parent = end
 	eHook.hide = True
 	
@@ -523,19 +545,13 @@ class SCENE_PT_caliper(bpy.types.Panel):
 			except:
 				pass
 
-		'''
-		row = layout.row()
-		row.prop(obj, "hide_select")
-		
-		box = layout.box()
-		box.label("Selection Tools")
-		box.operator("object.select_all")
-		'''
-
+				
+				
 # Add properties to objects
 def CaliperAddVariables():
 
 	bpy.types.Object.Caliper = bpy.props.BoolProperty()
+	bpy.types.Object.CaliperBit = bpy.props.BoolProperty()
 	bpy.types.Object.CaliperStart = bpy.props.BoolProperty()
 	bpy.types.Object.CaliperEnd = bpy.props.BoolProperty()
 
@@ -568,11 +584,14 @@ class Caliper_Add(bpy.types.Operator):
 		
 		return {'FINISHED'}
 
+		
 
 # Define menu item
 def menu_func(self, context):
 	self.layout.operator(Caliper_Add.bl_idname, icon='PLUGIN')
 
+	
+	
 # Load and register
 def register():
 	bpy.utils.register_module(__name__)
@@ -583,7 +602,11 @@ def register():
 	
 	bpy.app.handlers.load_post.append(load_caliper_on_load_file)
 	bpy.app.handlers.scene_update_pre.append(caliper_scene_update)
+	
+	bpy.app.handlers.save_pre.append(CaliperCheck)
 
+	
+	
 # Unregister
 def unregister():
 	bpy.utils.unregister_module(__name__)
@@ -591,5 +614,7 @@ def unregister():
 	
 	#bpy.utils.unregister_class(SCENE_PT_caliper)
 
+	
+	
 if __name__ == "__main__":
 	register()

@@ -44,16 +44,8 @@ Another is to use an enum property - then the UI can be made to have a search bo
 # By macouno
 # ########################################################
 
-def addDistance(distance, length, method, unit):
-
-	# ROUND METHOD (FOR FINAL MEASUREMENT)
-	if method == 'round':
-		if distance:
-			return distance+' '+str(int(round(length)))+unit
-		#else
-		return str(int(round(length)))+unit
+def addDistance(distance, length, unit):
 	
-	# INT METHOD (CAN HAVE SOMETHING ADDED BEHIND)
 	if distance:
 		return distance+' '+str(int(length))+unit
 	#else
@@ -91,8 +83,8 @@ def getMeasureString(system, distance, unit_settings, precision):
 		elif fM:
 			# Make sure the very last measurement is rounded and not floored
 			if step >= last:
-				return addDistance(distance, m, 'round', unit)
-			distance = addDistance(distance, fM, 'int', unit)
+				return addDistance(distance, round(m), unit)
+			distance = addDistance(distance, fM, unit)
 
 	if not distance:
 		return '0'+unit

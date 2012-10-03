@@ -44,72 +44,61 @@ Another is to use an enum property - then the UI can be made to have a search bo
 # By macouno
 # ########################################################
 
-def getMetric(distance, separate, precision):
+def addDistance(distance, length, method, unit):
+
+	# ROUND METHOD (FOR FINAL MEASUREMENT)
+	if method == 'round':
+		if distance:
+			return distance+' '+str(int(round(length)))+unit
+		#else
+		return str(int(round(length)))+unit
 	
-	pSteps = 0
-	m = distance
-	distance = ''
-	
-	# Now whatever the distance is is in meters!
-	# So lets see what it is in the largest scale!
-	
-	km = m / 1000
-	fKm = math.floor(km)
-	
-	
-	if fKm and not separate:
-		return str(round(km,precision))+'km'
-		
-	elif fKm:
-		pSteps+=1
-		if pSteps >= precision:
-			return str(int(round(km)))+'km'
-		distance = str(int(fKm))+'km'
-	
-	# We know it in km, now meters!
-	m = (km - fKm) * 1000
-	fM = math.floor(m)
-	
-	if fM and not separate:
-		return str(round(m,precision))+'m'
-	
-	elif fM:
-		pSteps+=1
-		if pSteps >= precision:
-			return distance+' '+str(int(round(m)))+'m'
-		
-		distance = distance+' '+str(int(fM))+'m'
-		
-	
-		
-	# We know meters how about centimeters!
-	cm = (m - fM) * 10
-	fCm = math.floor(cm)
-	
-	if fCm and not separate:
-		return str(round(cm,precision))+'cm'
-	
-	elif fCm:
-		pSteps+=1
-		if pSteps >= precision:
-			return distance+' '+str(int(round(cm)))+'mm'
-		distance = distance+' '+str(int(fCm))+'cm'
+	# INT METHOD (CAN HAVE SOMETHING ADDED BEHIND)
+	if distance:
+		return distance+' '+str(int(length))+unit
+	#else
+	return str(int(length))+unit
 
 
-	# We know centimeters how about millimeters!
-	mm = (cm - fCm) * 10
-	fMm = math.floor(mm)
+# FUNCTION FOR MAKING A NEAT METRIC SYSTEM MEASUREMENT STRING
+def getMeasureString(system, distance, unit_settings, precision):
 	
-	if fMm and not separate:
-		return str(round(mm,precision))+'mm'
+	separate = unit_settings.use_separate
 	
-	elif fMm:
-		return distance+' '+str(int(round(mm)))+'mm'
+	m = distance * unit_settings.scale_length
+	fM = 0
+	distance = False
 	
-	if distance == '':
-		return '0mm'
+	if system == 'METRIC':
+		table = [['km', 0.001], ['m', 1000], ['cm', 100], ['mm', 10]]
+	elif system == 'IMPERIAL':
+		table = [['mi', 0.000621371], ['ft', 5280], ['in', 12], ['thou', 1000]]
+	
+	# Figure out where to end measuring
+	last = len(table)
+	if precision < last:
+		last = precision
+	
+	for i, t in enumerate(table):
+		step = (i+1)
+		unit = t[0]
+		factor = t[1]
+		m = (m - fM) * factor
+		fM = math.floor(m)
+		
+		if fM and not separate:
+			return str(round(m,precision))+unit
+		elif fM:
+			# Make sure the very last measurement is rounded and not floored
+			if step >= last:
+				return addDistance(distance, m, 'round', unit)
+			distance = addDistance(distance, fM, 'int', unit)
+
+	if not distance:
+		return '0'+unit
 
 	return distance
+	
 	
 
 # DRIVER TO UPDATE THE CALIPERS
@@ -123,26 +112,12 @@ def CaliperUpdate(caliperName, textCurve, distance):
 	
 	# Some preparation for whatever comes next
 	if system != 'NONE':
-		separate = unit_settings.use_separate
-		distance = distance * unit_settings.scale_length
-
-	# Make a neat metric measurement for the text body
-	if system == 'METRIC':
-		bpy.data.curves[textCurve].body = getMetric(distance, separate, precision)
-		
-	# Make a neat imperial measurement for the text body
-	elif system == 'IMPERIAL':
-		
-		print('imperial')
-		bpy.data.curves[textCurve].body = str(distance)
+		bpy.data.curves[textCurve].body = getMeasureString(system, distance, unit_settings, precision)
 	
 	# IF we do things in Blender units, we just round it somewhat... for precision
 	else:
-		
-		distance = round(distance, 4)
-		
 		# Just set the textCurve's body as the distance... done
-		bpy.data.curves[textCurve].body = str(distance)
+		bpy.data.curves[textCurve].body = str(round(distance, precision))
 
 	return distance
 

@@ -155,8 +155,14 @@ def caliper_scene_update(dummy):
 	try:
 		for c in bpy.data.curves:
 			try:
-				c.body = c.body
+				if c['previous'] != c.body:
+					c.body = c.body
+					c['previous'] = c.body
 			except:
+				try:
+					c['previous'] = c.body
+				except:
+					pass
 				pass
 	except:
 		pass
@@ -394,7 +400,8 @@ def CaliperCreation(context):
 	c.mute = True
 	#c.use_y = c.use_z =  False
 	start.parent = caliper
-	start.hide = True
+	start.show_name = True
+	#start.hide = True
 	#start.hide_select = True
 	#start.select = True
 	
@@ -406,7 +413,8 @@ def CaliperCreation(context):
 	c = end.constraints.new(type='COPY_LOCATION')
 	c.mute = True
 	end.parent = caliper
-	end.hide = True
+	end.show_name = True
+	#end.hide = True
 	#end.hide_select = True
 	#end.select = True
 	#end.location[0] = 2.0

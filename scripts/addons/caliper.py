@@ -91,16 +91,27 @@ def getMeasureString(distance, unit_settings, precision):
 # CLEANUP CALIPERS
 @persistent
 def CaliperCheck(dummy):
-	scn = bpy.context.scene
 	
-	# Make a list of all caliper parts without a parent
-	# And add the calipers that don't have enough children
-	remove = [ob for ob in scn.objects if (ob.CaliperBit and (ob.parent == None or not ob.parent.name in scn.objects)) or (ob.Caliper and len(ob.children) < 4)]
+	# Lets see if the CaliperBits group exists... if not.. no action is required
+	try:
+		CaliperBits = bpy.data.groups['CaliperBits']
+	except:
+		CaliperBits = False
+		
+	# We do everything else outside the try except to get error messages in case anything is wrong
+	if not CaliperBits is False:
 	
-	if len(remove):
-		for ob in remove:
-			ob.select = False
-			bpy.context.scene.objects.unlink(ob)
+		
+		# Make a list of all caliper parts without a parent
+		# And add the calipers that don't have enough children
+		remove = [ob for ob in CaliperBits.objects if (ob.CaliperBit and (ob.parent == None or not ob.parent.name in CaliperBits.objects)) or (ob.Caliper and len(ob.children) < 4)]
+		
+		if len(remove):
+			for ob in remove:
+				ob.select = False
+				CaliperBits.objects.unlink(ob)
+				bpy.context.scene.objects.unlink(ob)
+				
 	return
 	
 
@@ -248,7 +259,12 @@ def CaliperSetTarget(self,context):
 def CaliperArrowMake(scene, caliper):
 
 	style = caliper.CaliperStyle
-
+	
+	try:
+		CaliperBits = bpy.data.groups['CaliperBits']
+	except:
+		CaliperBits = bpy.data.groups.new('CaliperBits')
+	
 	if style == 'square':
 		coList = [(0.1,-0.1,-0.1),(0.1,0.1,-0.1),(-0.1,0.1,-0.1),(-0.1,-0.1,-0.1),(0.1,-0.1,0.1),(0.1,0.1,0.1),(-0.1,0.1,0.1),(-0.1,-0.1,0.1),(0.0,0.0,0.0),(-0.0,0.0,0.0),(0.0,0.0,0.0)]
 		poList = [(5,6,2,1),(5,1,9),(7,4,0,3),(0,1,2,3),(7,6,5,4),(7,3,8),(8,2,6),(3,2,8),(6,7,8),(4,5,9),(0,4,9),(1,0,9)]
@@ -274,6 +290,7 @@ def CaliperArrowMake(scene, caliper):
 	me = bpy.data.meshes.new('arrow')
 	arrow = bpy.data.objects.new('arrow', me)
 	scene.objects.link(arrow)
+	CaliperBits.objects.link(arrow)
 	arrow.CaliperBit = True
 	arrow.parent = caliper
 	me.from_pydata(coList, [], poList)
@@ -368,6 +385,13 @@ def CaliperCreation(context):
 	bpy.ops.object.select_all(action='DESELECT')
 
 	scn = context.scene
+	
+	try:
+		CaliperBits = bpy.data.groups['CaliperBits']
+	except:
+		CaliperBits = bpy.data.groups.new('CaliperBits')
+	
+	
 	'''
 	try:
 		caliperGroup = bpy.data.groups['calipers']
@@ -377,10 +401,10 @@ def CaliperCreation(context):
 	# Add the caliper empty
 	caliper = bpy.data.objects.new('caliper', None)
 	scn.objects.link(caliper)
+	CaliperBits.objects.link(caliper)
 	#caliper.select = True
 	#scn.objects.active = caliper
 	
-	#caliperGroup.objects.link(caliper)
 	caliper.Caliper = True
 	caliper.show_name = True
 	#caliper.CaliperStyle = 'square'
@@ -393,6 +417,7 @@ def CaliperCreation(context):
 	# Make an empty for the start of measurement
 	start = bpy.data.objects.new('start', None)
 	scn.objects.link(start)
+	CaliperBits.objects.link(start)
 	start.CaliperBit = True
 	start.CaliperStart = True
 	c = start.constraints.new(type='COPY_LOCATION')
@@ -407,6 +432,7 @@ def CaliperCreation(context):
 	# Make an empty for the end of the measurement
 	end = bpy.data.objects.new('end', None)
 	scn.objects.link(end)
+	CaliperBits.objects.link(end)
 	end.CaliperBit = True
 	end.CaliperEnd = True
 	c = end.constraints.new(type='COPY_LOCATION')
@@ -427,6 +453,7 @@ def CaliperCreation(context):
 	text = bpy.data.objects.new(crv.name, crv)
 	text.CaliperBit = True
 	scn.objects.link(text)
+	CaliperBits.objects.link(text)
 	text.parent = caliper
 	
 	
@@ -468,12 +495,14 @@ def CaliperCreation(context):
 	# Make the hooks!
 	sHook = bpy.data.objects.new('startHook', None)
 	scn.objects.link(sHook)
+	CaliperBits.objects.link(sHook)
 	sHook.CaliperBit = True
 	sHook.parent = start
 	sHook.hide = True
 	
 	eHook = bpy.data.objects.new('endHook', None)
 	scn.objects.link(eHook)
+	CaliperBits.objects.link(eHook)
 	eHook.CaliperBit = True
 	eHook.parent = end
 	eHook.hide = True

@@ -390,7 +390,6 @@ def CaliperCreation(context):
 	
 	print('added',caliper.name)
 	
-	
 	# Make an empty for the start of measurement
 	start = bpy.data.objects.new('start', None)
 	scn.objects.link(start)
@@ -507,6 +506,9 @@ def CaliperCreation(context):
 	
 	
 	bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+	
+	# Returning caliper for @cloudforms additions
+	return caliper
 
 	
 class SCENE_PT_caliper(bpy.types.Panel):
